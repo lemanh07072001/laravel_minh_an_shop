@@ -34,15 +34,20 @@ class AuthController extends Controller implements HasMiddleware
             'password.confirmed' => 'Mật khẩu xác nhận không khớp.',
         ]);
 
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
+        try {
+            User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => bcrypt($request->password),
+            ]);
 
-        $token = JWTAuth::fromUser($user);
-
-        return response()->json(['token' => $token]);
+            return response()->json([
+                'status' => true,
+                'message' => 'Đăng ký thành công.',
+            ]);
+        }catch (Exception $e) {
+            logger('Controller: AuthController, Method: register, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+        }
     }
 
     public function login(Request $request)
@@ -56,18 +61,26 @@ class AuthController extends Controller implements HasMiddleware
             'password.required' => 'Mật khẩu không được để trống.',
         ]);
 
-         $credentials = request(['email', 'password']);
+        try {
+            $credentials = request(['email', 'password']);
 
-        if (! $token = auth('api')->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            if (! $token = auth('api')->attempt($credentials)) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            return $this->respondWithToken($token);
+        }catch (Exception $e) {
+            logger('Controller: AuthController, Method: login, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
-
-        return $this->respondWithToken($token);
     }
 
     public function profile()
     {
-          return response()->json(auth('api')->user());
+        try {
+            return response()->json(auth('api')->user());
+        }catch (Exception $e) {
+            logger('Controller: AuthController, Method: profile, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+        }
     }
 
     public function refresh()
@@ -77,8 +90,12 @@ class AuthController extends Controller implements HasMiddleware
 
     public function logout()
     {
-       auth('api')->logout();
-        return response()->json(['message' => 'Successfully logged out']);
+        try {
+            auth('api')->logout();
+            return response()->json(['message' => 'Successfully logged out']);
+        }catch (Exception $e) {
+            logger('Controller: AuthController, Method: logout, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+        }
     }
 
     protected function respondWithToken($token)

@@ -22,11 +22,12 @@ class AuthController extends Controller implements HasMiddleware
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
+            'username' => 'required|string',
             'email' => 'required|email|unique:users',
             'password' => 'required|string|confirmed',
         ], [
-            'name.required' => 'Tên không được để trống.',
+            'username.required' => 'Tên không được để trống.',
+            'username.string' => 'Tên phải là kiểu chuỗi',
             'email.required' => 'Email không được để trống.',
             'email.email' => 'Email không đúng định dạng.',
             'email.unique' => 'Email đã tồn tại.',
@@ -36,7 +37,7 @@ class AuthController extends Controller implements HasMiddleware
 
         try {
             User::create([
-                'name'     => $request->name,
+                'name'     => $request->username,
                 'email'    => $request->email,
                 'password' => bcrypt($request->password),
             ]);

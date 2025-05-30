@@ -113,28 +113,21 @@ class AuthController extends Controller implements HasMiddleware
 
     public function verifyEmail(Request $request, $id, $hash)
     {
+
         $user = User::findOrFail($id);
+        $frontendUrl = env('FRONTEND_URL'); // Lấy từ .env
 
         if (!hash_equals($hash, sha1($user->getEmailForVerification()))) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Liên kết xác minh không hợp lệ'
-            ], 400);
+            return redirect()->away($frontendUrl . '?status=false&message=' . urlencode('Liên kết không hợp lệ'));
         }
 
         if ($user->hasVerifiedEmail()) {
-            return response()->json([
-                'status' => true,
-                'message' => 'Email đã được xác minh trước đó'
-            ]);
+            return redirect()->away($frontendUrl . '?status=true&message=' . urlencode('Email đã được xác minh trước đó'));
         }
 
         $user->markEmailAsVerified();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Xác minh email thành công'
-        ]);
+        return redirect()->away($frontendUrl . '?status=true&message=' . urlencode('Xác minh email thành công'));
     }
 
     public function resendVerificationEmail(Request $request)

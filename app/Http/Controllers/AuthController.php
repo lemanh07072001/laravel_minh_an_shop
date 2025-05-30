@@ -73,7 +73,7 @@ class AuthController extends Controller implements HasMiddleware
             }
 
             return $this->respondWithToken($token);
-        }catch (Exception $e) {
+        }catch (\Exception $e) {
             logger('Controller: AuthController, Method: login, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
@@ -82,7 +82,7 @@ class AuthController extends Controller implements HasMiddleware
     {
         try {
             return response()->json(auth('api')->user());
-        }catch (Exception $e) {
+        }catch (\Exception $e) {
             logger('Controller: AuthController, Method: profile, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
@@ -97,7 +97,7 @@ class AuthController extends Controller implements HasMiddleware
         try {
             auth('api')->logout();
             return response()->json(['message' => 'Successfully logged out']);
-        }catch (Exception $e) {
+        }catch (\Exception $e) {
             logger('Controller: AuthController, Method: logout, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }

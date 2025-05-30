@@ -16,7 +16,7 @@ class AuthController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('auth:api', except: ['login','register','refresh']),
+            new Middleware('auth:api', except: ['login', 'register', 'refresh']),
         ];
     }
 
@@ -49,7 +49,7 @@ class AuthController extends Controller implements HasMiddleware
                 'status' => true,
                 'message' => 'Đăng ký thành công.',
             ]);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             logger('Controller: AuthController, Method: register, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
@@ -73,7 +73,7 @@ class AuthController extends Controller implements HasMiddleware
             }
 
             return $this->respondWithToken($token);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             logger('Controller: AuthController, Method: login, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
@@ -82,14 +82,14 @@ class AuthController extends Controller implements HasMiddleware
     {
         try {
             return response()->json(auth('api')->user());
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             logger('Controller: AuthController, Method: profile, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
 
     public function refresh()
     {
-         return $this->respondWithToken(auth('api')->refresh());
+        return $this->respondWithToken(auth('api')->refresh());
     }
 
     public function logout()
@@ -97,7 +97,7 @@ class AuthController extends Controller implements HasMiddleware
         try {
             auth('api')->logout();
             return response()->json(['message' => 'Successfully logged out']);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             logger('Controller: AuthController, Method: logout, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
@@ -115,17 +115,26 @@ class AuthController extends Controller implements HasMiddleware
     {
         $user = User::findOrFail($id);
 
-        if (!hash_equals($hash, sha1($user->email))) {
-            return response()->json(['message' => 'Liên kết xác minh không hợp lệ'], 400);
+        if (!hash_equals($hash, sha1($user->getEmailForVerification()))) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Liên kết xác minh không hợp lệ'
+            ], 400);
         }
 
         if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email đã được xác minh'], 400);
+            return response()->json([
+                'status' => true,
+                'message' => 'Email đã được xác minh trước đó'
+            ]);
         }
 
         $user->markEmailAsVerified();
 
-        return response()->json(['message' => 'Email đã được xác minh thành công']);
+        return response()->json([
+            'status' => true,
+            'message' => 'Xác minh email thành công'
+        ]);
     }
 
     public function resendVerificationEmail(Request $request)
@@ -140,5 +149,4 @@ class AuthController extends Controller implements HasMiddleware
 
         return response()->json(['message' => 'Email xác minh đã được gửi lại']);
     }
-
 }

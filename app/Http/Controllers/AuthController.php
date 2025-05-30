@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Notifications\VerifyEmail;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
 class AuthController extends Controller implements HasMiddleware
 {
@@ -36,17 +37,19 @@ class AuthController extends Controller implements HasMiddleware
         ]);
 
         try {
-            User::create([
+            $user = User::create([
                 'name'     => $request->username,
                 'email'    => $request->email,
                 'password' => bcrypt($request->password),
             ]);
 
+            $user->notify(new VerifyEmail());
+
             return response()->json([
                 'status' => true,
                 'message' => 'Đăng ký thành công.',
             ]);
-        }catch (Exception $e) {
+        }catch (\Exception $e) {
             logger('Controller: AuthController, Method: register, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
     }
@@ -106,6 +109,36 @@ class AuthController extends Controller implements HasMiddleware
             'token_type' => 'bearer',
             'expires_in' => auth()->factory()->getTTL() * 60
         ]);
+    }
+
+    public function verifyEmail(Request $request, $id, $hash)
+    {
+        $user = User::findOrFail($id);
+
+        if (!hash_equals($hash, sha1($user->email))) {
+            return response()->json(['message' => 'Liên kết xác minh không hợp lệ'], 400);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email đã được xác minh'], 400);
+        }
+
+        $user->markEmailAsVerified();
+
+        return response()->json(['message' => 'Email đã được xác minh thành công']);
+    }
+
+    public function resendVerificationEmail(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email đã được xác minh'], 400);
+        }
+
+        $user->notify(new VerifyEmail());
+
+        return response()->json(['message' => 'Email xác minh đã được gửi lại']);
     }
 
 }

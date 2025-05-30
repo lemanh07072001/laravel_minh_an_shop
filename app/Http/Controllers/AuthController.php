@@ -112,34 +112,33 @@ class AuthController extends Controller implements HasMiddleware
     }
 
     public function verifyEmail(Request $request, $id, $hash)
-    {
+{
+    $user = User::findOrFail($id);
+    $frontendUrl = config('app.frontend_url') . '/verify-email';
 
-        $user = User::findOrFail($id);
-        $frontendUrl = env('FRONTEND_URL'); // Lấy từ .env
-
-        if (!hash_equals($hash, sha1($user->getEmailForVerification()))) {
-            return redirect()->away($frontendUrl . '?status=false&message=' . urlencode('Liên kết không hợp lệ'));
-        }
-
-        if ($user->hasVerifiedEmail()) {
-            return redirect()->away($frontendUrl . '?status=true&message=' . urlencode('Email đã được xác minh trước đó'));
-        }
-
-        $user->markEmailAsVerified();
-
-        return redirect()->away($frontendUrl . '?status=true&message=' . urlencode('Xác minh email thành công'));
+    if (!hash_equals($hash, sha1($user->getEmailForVerification()))) {
+        return redirect()->away($frontendUrl . '?status=false&message=' . urlencode('Liên kết không hợp lệ'));
     }
 
-    public function resendVerificationEmail(Request $request)
-    {
-        $user = $request->user();
-
-        if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email đã được xác minh'], 400);
-        }
-
-        $user->notify(new VerifyEmail());
-
-        return response()->json(['message' => 'Email xác minh đã được gửi lại']);
+    if ($user->hasVerifiedEmail()) {
+        return redirect()->away($frontendUrl . '?status=true&message=' . urlencode('Email đã được xác minh trước đó'));
     }
+
+    $user->markEmailAsVerified();
+
+    return redirect()->away($frontendUrl . '?status=true&message=' . urlencode('Xác minh email thành công'));
+}
+
+public function resendVerificationEmail(Request $request)
+{
+    $user = $request->user();
+
+    if ($user->hasVerifiedEmail()) {
+        return response()->json(['message' => 'Email đã được xác minh'], 400);
+    }
+
+    $user->notify(new VerifyEmail());
+
+    return response()->json(['message' => 'Email xác minh đã được gửi lại']);
+}
 }

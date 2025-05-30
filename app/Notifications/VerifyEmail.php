@@ -36,7 +36,7 @@ class VerifyEmail extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-       $verificationUrl = $this->verificationUrl($notifiable);
+        $verificationUrl = $this->verificationUrl($notifiable);
 
         return (new MailMessage)
             ->subject('Xác minh địa chỉ email')
@@ -59,10 +59,19 @@ class VerifyEmail extends Notification
 
     protected function verificationUrl($notifiable)
     {
-        return URL::temporarySignedRoute(
+        $temporarySignedURL = URL::temporarySignedRoute(
             'verification.verify',
             Carbon::now()->addMinutes(60),
-            ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->email)]
+            [
+                'id' => $notifiable->getKey(),
+                'hash' => sha1($notifiable->getEmailForVerification()),
+            ]
         );
+
+        // Tách query
+        $query = parse_url($temporarySignedURL, PHP_URL_QUERY);
+
+        // FE link + query
+        return config('app.frontend_url') . '/verify-email?' . $query;
     }
 }

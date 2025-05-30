@@ -28,6 +28,6 @@ Route::group([
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
 
-    Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+    Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->middleware(['signed'])->name('verification.verify');
     Route::post('email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('auth:api');
 });

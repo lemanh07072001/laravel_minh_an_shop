@@ -36,7 +36,12 @@ class VerifyEmail extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-       $verificationUrl = $this->verificationUrl($notifiable);
+       $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify', // Tên route API
+            Carbon::now()->addMinutes(60),
+            ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())]
+        );
+
 
         return (new MailMessage)
             ->subject('Xác minh địa chỉ email')

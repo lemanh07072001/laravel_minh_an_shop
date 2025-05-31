@@ -17,7 +17,7 @@ class AuthController extends Controller implements HasMiddleware
     {
         return [
             new Middleware('auth:api', except: ['login', 'register', 'refresh']),
-            new Middleware('verified', except:['register', 'login','verifyEmail']),
+            new Middleware('verified', except: ['register', 'login', 'resendVerificationEmail']),
         ];
     }
 
@@ -72,8 +72,8 @@ class AuthController extends Controller implements HasMiddleware
             if (! $token = auth('api')->attempt($credentials)) {
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
-
-            return $this->respondWithToken($token);
+            $user = auth('api')->user();
+            return $this->respondWithToken($token, $user);
         } catch (\Exception $e) {
             logger('Controller: AuthController, Method: login, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
         }
@@ -90,7 +90,9 @@ class AuthController extends Controller implements HasMiddleware
 
     public function refresh()
     {
-        return $this->respondWithToken(auth('api')->refresh());
+        $user = auth('api')->user();
+        $token = auth('api')->refresh();
+        return $this->respondWithToken($token, $user);
     }
 
     public function logout()
@@ -103,14 +105,28 @@ class AuthController extends Controller implements HasMiddleware
         }
     }
 
-    protected function respondWithToken($token)
+    protected function respondWithToken($token, $user)
     {
         return response()->json([
+            'success' => true,
             'token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60
+            'expires_in' => auth()->factory()->getTTL() * 60,
+            'user' => $user
         ]);
     }
 
 
+    public function resendVerificationEmail(Request $request)
+    {
+        $user = auth('api')->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email already verified'], 400);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['message' => 'Verification email sent']);
+    }
 }

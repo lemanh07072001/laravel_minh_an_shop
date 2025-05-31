@@ -3,8 +3,11 @@
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Auth\Notifications\VerifyEmail;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -29,8 +32,7 @@ Route::group([
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
-
-    Route::post('email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('auth:api');
+    Route::post('email/resend', [AuthController::class, 'resendVerificationEmail']);
 });
 
 
@@ -52,3 +54,10 @@ Route::get('/verify-email/{id}/{hash}', function ($id, $hash) {
 
     return response()->json(['message' => 'Email đã được xác thực thành công']);
 })->name('verification.verify');
+
+
+Route::middleware('auth:api')->get('/email-verified', function () {
+    return response()->json([
+        'email_verified' => Auth::user()->hasVerifiedEmail(),
+    ]);
+});

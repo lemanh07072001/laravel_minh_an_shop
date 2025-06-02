@@ -8,6 +8,8 @@ use App\Notifications\VerifyEmail;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Routing\Controllers\HasMiddleware;
 
@@ -16,8 +18,8 @@ class AuthController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('auth:api', except: ['login', 'register', 'refresh']),
-            new Middleware('verified', except: ['register', 'login', 'resendVerificationEmail']),
+            new Middleware('auth:api', except: ['login', 'register', 'refresh', 'forgotPassword']),
+            new Middleware('verified', except: ['register', 'login', 'resendVerificationEmail', 'forgotPassword']),
         ];
     }
 
@@ -158,5 +160,55 @@ class AuthController extends Controller implements HasMiddleware
         $user->sendEmailVerificationNotification();
 
         return response()->json(['message' => 'Verification email sent']);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $status = Password::sendResetLink($request->only('email'));
+
+        return $status === Password::RESET_LINK_SENT
+            ? response()->json([
+                'success' => true,
+                'message' => 'Link đặt lại mật khẩu đã được gửi.'
+                ])
+            : response()->json([
+                'success' => false,
+                'message' => 'Vui lòng thử lại sau ít phút.'
+            ], 400);
+    }
+
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|min:6|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => bcrypt($password)
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? response()->json([
+                'success' => true,
+                'message' => 'Mật khẩu đã được đặt lại thành công.'
+            ])
+            : response()->json([
+                'success' => false,
+                'message' => 'Token không hợp lệ hoặc đã hết hạn.'
+            ], 400);
     }
 }

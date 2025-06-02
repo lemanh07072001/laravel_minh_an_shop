@@ -33,6 +33,9 @@ Route::group([
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     Route::post('email/resend', [AuthController::class, 'resendVerificationEmail']);
+
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
 });
 
 

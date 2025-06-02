@@ -15,7 +15,7 @@ Route::get('/user', function (Request $request) {
 Route::get('/test-email', function (Request $request) {
 
     $user = App\Models\User::whereEmail($request->email)->first();
-    $user->notify(new App\Notifications\VerifyEmail());
+    $user->notify(new VerifyEmail());
     return response()->json(['message' => 'Email sent']);
 });
 

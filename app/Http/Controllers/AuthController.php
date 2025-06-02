@@ -67,15 +67,43 @@ class AuthController extends Controller implements HasMiddleware
         ]);
 
         try {
-            $credentials = request(['email', 'password']);
+            $credentials = $request->only('email', 'password');
 
-            if (! $token = auth('api')->attempt($credentials)) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+            $user = \App\Models\User::where('email', $credentials['email'])->first();
+
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Email không tồn tại trong hệ thống.',
+                ], 404);
             }
+
+            if (!auth('api')->attempt($credentials)) {
+                return response()->json([
+                    'message' => 'Tài khoản hoặc mật khẩu không chính xác.',
+                ], 401);
+            }
+
             $user = auth('api')->user();
-            return $this->respondWithToken($token, $user);
+
+            if (!$user->hasVerifiedEmail()) {
+                $user->sendEmailVerificationNotification();
+
+                return response()->json([
+                    'message' => 'Vui lòng xác minh email của bạn. Một email xác minh đã được gửi.',
+                    'token' => auth('api')->tokenById($user->id),
+                    'user' => $user,
+                    'status' => false
+                ], 403);
+            }
+
+            return $this->respondWithToken(auth('api')->tokenById($user->id), $user);
         } catch (\Exception $e) {
             logger('Controller: AuthController, Method: login, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+
+            return response()->json([
+                'message' => 'Đã xảy ra lỗi trong quá trình đăng nhập.',
+                'status' => false
+            ], 500);
         }
     }
 
@@ -120,6 +148,8 @@ class AuthController extends Controller implements HasMiddleware
     public function resendVerificationEmail(Request $request)
     {
         $user = auth('api')->user();
+
+        logger($user);
 
         if ($user->hasVerifiedEmail()) {
             return response()->json(['message' => 'Email already verified'], 400);

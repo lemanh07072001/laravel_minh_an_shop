@@ -7,11 +7,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Notification;
+use App\Http\Controllers\GoogleAuthController;
 use Illuminate\Auth\Notifications\VerifyEmail;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:api','verified');
+})->middleware('auth:api', 'verified');
 Route::get('/test-email', function (Request $request) {
 
     $user = App\Models\User::whereEmail($request->email)->first();
@@ -36,6 +37,10 @@ Route::group([
 
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
+
+    // Login Google
+    Route::get('google', [GoogleAuthController::class, 'redirectToGoogle']);
+    Route::get('google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 });
 
 

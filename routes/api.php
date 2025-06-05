@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SocialController;
 use Illuminate\Support\Facades\Notification;
 use App\Http\Controllers\GoogleAuthController;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -39,33 +40,9 @@ Route::group([
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
 
     // Login Google
-    Route::get('google', [GoogleAuthController::class, 'redirectToGoogle']);
-    Route::get('google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+    Route::get('/google', [SocialController::class, 'redirectToGoogle']);
+    Route::get('/google/callback', [SocialController::class, 'handleGoogleCallback']);
+
 });
 
 
-
-
-Route::get('/verify-email/{id}/{hash}', function ($id, $hash) {
-    $user = User::findOrFail($id);
-
-    if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
-        return response()->json(['message' => 'Token không hợp lệ'], 400);
-    }
-
-    if ($user->hasVerifiedEmail()) {
-        return response()->json(['message' => 'Email đã được xác thực'], 400);
-    }
-
-    $user->markEmailAsVerified();
-    event(new Verified($user));
-
-    return response()->json(['message' => 'Email đã được xác thực thành công']);
-})->name('verification.verify');
-
-
-Route::middleware('auth:api')->get('/email-verified', function () {
-    return response()->json([
-        'email_verified' => Auth::user()->hasVerifiedEmail(),
-    ]);
-});

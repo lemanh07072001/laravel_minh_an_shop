@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Events\NewNotification;
 use App\Notifications\VerifyEmail;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Auth;
@@ -46,7 +47,6 @@ class AuthController extends Controller implements HasMiddleware
                 'password' => bcrypt($request->password),
             ]);
 
-            $user->sendEmailVerificationNotification();
 
             return response()->json([
                 'status' => true,
@@ -87,16 +87,8 @@ class AuthController extends Controller implements HasMiddleware
 
             $user = auth('api')->user();
 
-            if (!$user->hasVerifiedEmail()) {
-                $user->sendEmailVerificationNotification();
-
-                return response()->json([
-                    'message' => 'Vui lòng xác minh email của bạn. Một email xác minh đã được gửi.',
-                    'token' => auth('api')->tokenById($user->id),
-                    'user' => $user,
-                    'status' => false
-                ], 403);
-            }
+             // Phát sự kiện thông báo
+            event(new NewNotification("Email $user->email đã đăng nhập thành công!",$user->id));
 
             return $this->respondWithToken(auth('api')->tokenById($user->id), $user);
         } catch (\Exception $e) {
@@ -146,21 +138,6 @@ class AuthController extends Controller implements HasMiddleware
         ]);
     }
 
-
-    public function resendVerificationEmail(Request $request)
-    {
-        $user = auth('api')->user();
-
-        logger($user);
-
-        if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email already verified'], 400);
-        }
-
-        $user->sendEmailVerificationNotification();
-
-        return response()->json(['message' => 'Verification email sent']);
-    }
 
     public function forgotPassword(Request $request)
     {

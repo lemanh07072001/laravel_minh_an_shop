@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\UserBan;
+use App\Models\Profiles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Notifications\Notifiable;
+
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\ResetPasswordNotification;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -16,8 +18,8 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     use HasFactory, Notifiable;
 
     const STAUS_KEY = [
-        "ACTIVE" => 1,
-        "INACTIVE" => 0
+        "ACTIVE" => 0,
+        "INACTIVE" => 1,
     ];
 
     /**
@@ -31,6 +33,21 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'password',
         'google_id'
     ];
+
+    public function bans()
+    {
+        return $this->hasMany(UserBan::class);
+    }
+
+    public function latestBan()
+    {
+        return $this->hasOne(UserBan::class)->latestOfMany();
+    }
+
+    public function profile()
+    {
+        return $this->hasOne(Profiles::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

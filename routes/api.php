@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UserController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Verified;
@@ -13,7 +14,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:api', 'verified');
+})->middleware('auth:api');
 Route::get('/test-email', function (Request $request) {
 
     $user = App\Models\User::whereEmail($request->email)->first();
@@ -43,6 +44,10 @@ Route::group([
     Route::get('/google', [SocialController::class, 'redirectToGoogle']);
     Route::get('/google/callback', [SocialController::class, 'handleGoogleCallback']);
 
+});
+
+Route::controller(UserController::class)->middleware('auth:api')->group(function () {
+    Route::get('/users', 'getUser');
 });
 
 

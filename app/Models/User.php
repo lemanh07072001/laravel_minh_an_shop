@@ -22,6 +22,10 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         "INACTIVE" => 1,
     ];
 
+    const ROLE_KEY = [
+        'Admin' => 0,
+        'User' => 0
+    ];
     /**
      * The attributes that are mass assignable.
      *
@@ -31,7 +35,9 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'name',
         'email',
         'password',
-        'google_id'
+        'google_id',
+        'status',
+        'role'
     ];
 
     public function bans()

@@ -31,7 +31,7 @@ Route::group([
 
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/profile', [AuthController::class, 'profile']);
+    Route::post('/profile', [AuthController::class, 'profile'])->middleware('checkAdmin');
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
@@ -46,8 +46,9 @@ Route::group([
 
 });
 
-Route::controller(UserController::class)->middleware('auth:api')->group(function () {
-    Route::get('/users', 'getUser');
+Route::controller(UserController::class)->middleware(['auth:api','checkAdmin'])->prefix('user')->group(function () {
+    Route::get('/get-users', 'getUser');
+    Route::post('/create-user', 'createUser');
 });
 
 

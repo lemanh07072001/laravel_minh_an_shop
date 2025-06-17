@@ -20,6 +20,8 @@ class Profiles extends Model
         'birthday',
         'gender',
         'bio',
+        'address',
+        'note',
     ];
 
     public function user()

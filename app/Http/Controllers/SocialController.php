@@ -27,6 +27,7 @@ class SocialController extends Controller
                     'email' => $googleUser->email,
                     'google_id' => $googleUser->id,
                     'password' => bcrypt(uniqid()),
+                    'role' => User::ROLE_KEY['User']
                 ]);
             } else {
                 $user->update(['google_id' => $googleUser->id]);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,19 +48,8 @@ class UserController extends Controller
         ]);
     }
 
-    public function createUser(Request $request)
+    public function createUser(UserRequest $request)
     {
-        $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'nullable|string|min:6', // có thể null
-            'phone'    => 'required|string',
-            'address'  => 'nullable|string',
-            'note'     => 'nullable|string',
-            'status'   => 'required|integer',
-            'role'     => 'required|integer',
-        ]);
-
         try {
             DB::transaction(function () use ($request) {
                 $password = $request->filled('password') ? $request->input('password') : '123456';
@@ -84,6 +74,82 @@ class UserController extends Controller
             logger('Controller: UserController, Method: createUser, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
             return response()->json([
                 'message' => 'Có lỗi xảy ra khi tạo user!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function editUser(UserRequest $request,$id)
+    {
+        logger($request->all());
+        try {
+            DB::transaction(function () use ($request,$id) {
+                $user = User::find($id);
+
+                if(!$user){
+                    throw new \Exception('User not found!', 404);
+                }
+
+                // Nếu password có nhập -> mã hóa, ngược lại giữ password cũ
+                $password = $user->password; // mật khẩu cũ
+                if ($request->filled('password')) {
+                    $password = bcrypt($request->input('password'));
+                }
+
+
+                $user->update([
+                    'name'     => $request['name'],
+                    'email'    => $request['email'],
+                    'password' => $password,
+                    'status'   => $request['status'],
+                    'role'     => $request['role'],
+                ]);
+
+                // updateOrCreate để tránh lỗi nếu đã có profile
+                $user->profile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'phone'   => $request['phone'],
+                        'address' => $request['address'] ?? '',
+                        'note'    => $request['note'] ?? '',
+                    ]
+                );
+
+                return $user; // Trả về user sau update
+            });
+
+            return response()->json([
+                'message' => 'Cập nhật user thành công!',
+            ]);
+
+        } catch (\Exception $e) {
+            logger('Controller: UserController, Method: editUser, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi cập nhật user!',
+                'error'   => $e->getMessage()
+            ], $e->getCode() === 404 ? 404 : 500);
+        }
+    }
+
+    public function getInfoUser($id)
+    {
+        logger($id);
+        try {
+            $user = User::with('profile')->find($id);
+
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not found!'
+                ],404);
+            }
+
+            return response()->json([
+                'data' => $user
+            ],200);
+        }catch (\Exception $e){
+            logger('Controller: UserController, Method: getInfoUser, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi lấy user!',
                 'error'   => $e->getMessage()
             ], 500);
         }

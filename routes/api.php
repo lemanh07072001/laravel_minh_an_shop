@@ -15,12 +15,6 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:api');
-Route::get('/test-email', function (Request $request) {
-
-    $user = App\Models\User::whereEmail($request->email)->first();
-    $user->notify(new VerifyEmail());
-    return response()->json(['message' => 'Email sent']);
-});
 
 Route::group([
 
@@ -49,6 +43,8 @@ Route::group([
 Route::controller(UserController::class)->middleware(['auth:api','checkAdmin'])->prefix('user')->group(function () {
     Route::get('/get-users', 'getUser');
     Route::post('/create-user', 'createUser');
+    Route::post('/edit-user/{id}', 'editUser');
+    Route::get('/info-user/{id}', 'getInfoUser');
 });
 
 

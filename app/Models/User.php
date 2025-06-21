@@ -20,6 +20,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     const STAUS_KEY = [
         "ACTIVE" => 0,
         "INACTIVE" => 1,
+        "BAN" => 2,
     ];
 
     const ROLE_KEY = [
@@ -40,9 +41,31 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'role'
     ];
 
+    const UserBanKey = [
+        '60'      => '1 giờ',
+        '360'    => '6 giờ',
+        '720'    => '12 giờ',
+        '1440'   => '1 ngày',
+        '4320'   => '3 ngày',
+        '10080'  => '7 ngày',
+        '43200'  => '30 ngày',
+        '-1'     => 'Vĩnh viễn',
+    ];
+
+    const UserBanText = [
+        '1 giờ'     => '60',
+        '6 giờ'     => '360',
+        '12 giờ'    => '720',
+        '1 ngày'    => '1440',
+        '3 ngày'    => '4320',
+        '7 ngày'    => '10080',
+        '10 ngày'   => '43200',
+        'Vĩnh viễn' => '-1',
+    ];
+
     public function bans()
     {
-        return $this->hasMany(UserBan::class);
+        return $this->hasOne(UserBan::class);
     }
 
     public function latestBan()

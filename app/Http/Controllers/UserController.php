@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UserRequest;
+use App\Mail\SendEmail;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
@@ -133,7 +136,6 @@ class UserController extends Controller
 
     public function getInfoUser($id)
     {
-        logger($id);
         try {
             $user = User::with('profile')->find($id);
 
@@ -148,6 +150,98 @@ class UserController extends Controller
             ],200);
         }catch (\Exception $e){
             logger('Controller: UserController, Method: getInfoUser, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi lấy user!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function sendEmail(Request $request, $id){
+        try {
+            $subject = $request->input('title');
+            $message = $request->input('note');
+            $viewTemplate =  $request->input('emailTemplate');
+
+            $user = User::find($id);
+
+            if(!$user){
+                return response()->json([
+                    'message' => 'User not found!'
+                ],404);
+            }
+
+            $message = str_replace('{{name}}', $user->email, $message);
+            Mail::to($user->email)->queue(new SendEmail($subject,$message,$viewTemplate));
+
+            return response()->json([
+                'message' => 'Gửi email thành công!',
+            ]);
+        }catch (\Exception $e){
+            logger('Controller: UserController, Method: sendEmail, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi lấy user!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function banAccount(Request $request, $id)
+    {
+        try {
+            $lockTime = $request->input('lockTime');
+            $note = $request->input('note');
+
+            $user = User::find($id);
+
+            if(!$user){
+                throw new \Exception('User not found!', 404);
+            }
+
+            $data = [
+                'lock_time' => $lockTime,
+                'reason'    => $note,
+                'user_id'   => $id,
+                'banned_at'  => date('Y-m-d H:i:s'),
+                'banned_by' => Auth::user()->id,
+            ];
+
+            $user->update([
+                'status' => User::STAUS_KEY['BAN']
+            ]);
+            $user->bans()->updateOrCreate(
+                ['user_id' => $user->id], // điều kiện tìm
+                $data // dữ liệu cập nhật / tạo mới
+            );
+
+            return response()->json([
+                'message' => 'Tài khoản '.$user->email.' đã bị ban '.User::UserBanKey[$lockTime],
+            ]);
+
+        }catch (\Exception $e){
+            logger('Controller: UserController, Method: banAccount, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi lấy user!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAccountBan( $id)
+    {
+        try {
+            $user = User::find($id);
+
+            if(!$user){
+                throw new \Exception('User not found!', 404);
+            }
+
+            return response()->json([
+                'dataUser' => $user->bans()->first()
+            ]);
+
+        }catch (\Exception $e){
+            logger('Controller: UserController, Method: getAccountBan, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
             return response()->json([
                 'message' => 'Có lỗi xảy ra khi lấy user!',
                 'error'   => $e->getMessage()

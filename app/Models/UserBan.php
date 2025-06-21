@@ -12,5 +12,5 @@ class UserBan extends Model
         return $this->belongsTo(User::class);
     }
 
-     protected $fillable = ['user_id', 'reason', 'banned_at', 'unbanned_at', 'banned_by'];
+     protected $fillable = ['user_id', 'reason', 'banned_at', 'unbanned_at', 'banned_by','lock_time'];
 }

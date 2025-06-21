@@ -45,6 +45,9 @@ Route::controller(UserController::class)->middleware(['auth:api','checkAdmin'])-
     Route::post('/create-user', 'createUser');
     Route::post('/edit-user/{id}', 'editUser');
     Route::get('/info-user/{id}', 'getInfoUser');
+    Route::post('/send-email/{id}', 'sendEmail');
+    Route::post('/ban-account/{id}', 'banAccount');
+    Route::get('/get-account-ban/{id}', 'getAccountBan');
 });
 
 

@@ -48,6 +48,8 @@ Route::controller(UserController::class)->middleware(['auth:api','checkAdmin'])-
     Route::post('/send-email/{id}', 'sendEmail');
     Route::post('/ban-account/{id}', 'banAccount');
     Route::get('/get-account-ban/{id}', 'getAccountBan');
+    Route::delete('/delete/{id}', 'deleteUser');
+    Route::post('/unban/{id}', 'unBan');
 });
 
 

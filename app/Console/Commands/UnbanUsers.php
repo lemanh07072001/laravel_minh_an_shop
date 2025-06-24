@@ -53,7 +53,9 @@ class UnbanUsers extends Command
                         'status' => User::STAUS_KEY['ACTIVE']
                     ]);
 
-                    $userBan->delete();
+                    $userBan->update([
+                        'status' => User::STAUS_KEY['ACTIVE']
+                    ]);
                 }
             }
         }

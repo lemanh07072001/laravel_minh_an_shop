@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserBan extends Model
 {
+    const STAUS_KEY = [
+        "UNBAN" => 0,
+        "BAN" => 1,
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-     protected $fillable = ['user_id', 'reason', 'banned_at', 'unbanned_at', 'banned_by','lock_time'];
+     protected $fillable = ['user_id', 'reason', 'banned_at', 'unbanned_at', 'banned_by','lock_time','status'];
 }

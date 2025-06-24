@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+Route::get('/get-proxy', function () {
+
+    return App\Helpers\ProxyHelper::fetchMultipleProxies();
 });
 

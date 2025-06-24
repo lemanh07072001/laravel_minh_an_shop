@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UserRequest;
 use App\Mail\SendEmail;
 use App\Models\User;
+use App\Models\UserBan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -198,6 +199,13 @@ class UserController extends Controller
                 throw new \Exception('User not found!', 404);
             }
 
+            // Kiểm tra nếu là user đang login
+            if (Auth::id() == $user->id) {
+                return response()->json([
+                    'message' => 'Bạn không thể ban tài khoản chính mình.',
+                ]);
+            }
+
             $data = [
                 'lock_time' => $lockTime,
                 'reason'    => $note,
@@ -236,8 +244,10 @@ class UserController extends Controller
                 throw new \Exception('User not found!', 404);
             }
 
+            $ban = $user->bans()->where('status', UserBan::STAUS_KEY['UNBAN'])->first();
+
             return response()->json([
-                'dataUser' => $user->bans()->first()
+                'dataUser' => $ban
             ]);
 
         }catch (\Exception $e){
@@ -248,4 +258,64 @@ class UserController extends Controller
             ], 500);
         }
     }
+    public function deleteUser($id)
+    {
+        try {
+            $user = User::find($id);
+
+            if(!$user){
+                throw new \Exception('User not found!', 404);
+            }
+
+            // Kiểm tra nếu là user đang login
+            if (Auth::id() == $user->id) {
+                return response()->json([
+                    'message' => 'Bạn không thể xóa tài khoản đang đăng nhập.',
+                ]);
+            }
+
+            $user->delete();
+
+            return response()->json([
+                'message' => 'Tài khoản '.$user->email.' đã xóa thành công.',
+            ]);
+        }catch (\Exception $e){
+            logger('Controller: UserController, Method: deleteUser, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi lấy user!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function unBan($id)
+    {
+        try {
+            $user = User::find($id);
+
+            if(!$user){
+                throw new \Exception('User not found!', 404);
+            }
+
+            $user->bans()->update([
+                'unbanned_at'  => date('Y-m-d H:i:s'),
+                'status' => UserBan::STAUS_KEY['UNBAN']
+            ]);
+
+            $user->update([
+                'status' => User::STAUS_KEY['ACTIVE']
+            ]);
+
+            return response()->json([
+                'message' => 'Tài khoản ' . $user->email . ' đã được mở khóa thành công.',
+            ]);
+        }catch (\Exception $e){
+            logger('Controller: UserController, Method: unBan, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi lấy user!',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Carbon\CarbonInterval;
 use Illuminate\Http\Request;
 use App\Events\NewNotification;
 use App\Notifications\VerifyEmail;
@@ -71,6 +72,22 @@ class AuthController extends Controller implements HasMiddleware
             $credentials = $request->only('email', 'password');
 
             $user = \App\Models\User::where('email', $credentials['email'])->first();
+
+
+            if ($user && $user->bans()->exists()) {
+                $userBan = $user->bans()->first();
+
+                if ($userBan->lock_time == -1) {
+                    return response()->json([
+                        'message' => 'Tài khoản đã bị khoá vĩnh viễn. Vui lòng liên hệ Admin.',
+                    ], 404);
+                }
+
+                return response()->json([
+                    'message' => 'Tài khoản đã bị khóa ' . CarbonInterval::minutes($userBan->lock_time)->cascade()->forHumans(),
+                ], 404);
+            }
+
 
             if (!$user) {
                 return response()->json([
@@ -187,4 +204,6 @@ class AuthController extends Controller implements HasMiddleware
                 'message' => 'Token không hợp lệ hoặc đã hết hạn.'
             ], 400);
     }
+
+
 }

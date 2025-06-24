@@ -65,7 +65,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     public function bans()
     {
-        return $this->hasOne(UserBan::class);
+        return $this->hasOne(UserBan::class)->latestOfMany('created_at');
     }
 
     public function latestBan()

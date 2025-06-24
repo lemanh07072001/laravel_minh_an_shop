@@ -212,15 +212,13 @@ class UserController extends Controller
                 'user_id'   => $id,
                 'banned_at'  => date('Y-m-d H:i:s'),
                 'banned_by' => Auth::user()->id,
+                'status'    => UserBan::STAUS_KEY['BAN'],
             ];
 
             $user->update([
                 'status' => User::STAUS_KEY['BAN']
             ]);
-            $user->bans()->updateOrCreate(
-                ['user_id' => $user->id], // điều kiện tìm
-                $data // dữ liệu cập nhật / tạo mới
-            );
+            $user->bans()->create($data);
 
             return response()->json([
                 'message' => 'Tài khoản '.$user->email.' đã bị ban '.User::UserBanKey[$lockTime],
@@ -244,7 +242,7 @@ class UserController extends Controller
                 throw new \Exception('User not found!', 404);
             }
 
-            $ban = $user->bans()->where('status', UserBan::STAUS_KEY['UNBAN'])->first();
+            $ban = $user->bans()->first();
 
             return response()->json([
                 'dataUser' => $ban

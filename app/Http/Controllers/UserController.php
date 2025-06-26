@@ -316,4 +316,53 @@ class UserController extends Controller
         }
     }
 
+    public function deleteMultiple($ids)
+    {
+        try {
+            // 1. Kiểm tra nếu không có ID
+            if (empty($ids)) {
+                return response()->json([
+                    'message' => 'Không có ID nào được cung cấp để xóa.'
+                ], 400);
+            }
+
+            // 2. Chuyển chuỗi thành mảng số nguyên
+            $idArray = array_filter(array_map('intval', explode(',', $ids)));
+
+            if (empty($idArray)) {
+                return response()->json([
+                    'message' => 'Danh sách ID không hợp lệ.'
+                ], 400);
+            }
+
+            // 3. Tìm các user có ID trong mảng và ID là chính mình
+            $protectedUsers = User::whereIn('id', $idArray)
+                ->where('id', Auth::id())
+                ->get();
+
+            // 4. Nếu có user bị chặn xóa (chính mình)
+            if ($protectedUsers->isNotEmpty()) {
+                $emails = $protectedUsers->pluck('email')->toArray();
+                $emailList = implode(', ', $emails);
+
+                throw new \Exception("Không thể xóa tài khoản đang đăng nhập: {$emailList}", 403);
+            }
+
+            // 5. Xóa các user còn lại
+            $deletedCount = User::whereIn('id', $idArray)->delete();
+
+            return response()->json([
+                'message' => "Đã xóa thành công {$deletedCount} người dùng.",
+                'deleted' => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            logger('Controller: UserController, Method: deleteMultiple, Error: ' . $e->getMessage() . ', Line: ' . $e->getLine());
+
+            return response()->json([
+                'message' => 'Có lỗi xảy ra khi xóa user!',
+                'error'   => $e->getMessage()
+            ], $e->getCode() == 403 ? 403 : 500);
+        }
+    }
+
 }

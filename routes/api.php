@@ -50,6 +50,7 @@ Route::controller(UserController::class)->middleware(['auth:api','checkAdmin'])-
     Route::get('/get-account-ban/{id}', 'getAccountBan');
     Route::delete('/delete/{id}', 'deleteUser');
     Route::post('/unban/{id}', 'unBan');
+    Route::delete('/delete-multiple/{ids}', 'deleteMultiple');
 });
 
 

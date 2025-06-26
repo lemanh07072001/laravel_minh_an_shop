@@ -12,7 +12,7 @@ class FetchProxyCN extends Command
      *
      * @var string
      */
-    protected $signature =  'proxy:fetch-cn {--limit=10}';
+    protected $signature =  'proxy:fetch-cn';
 
     /**
      * The console command description.
@@ -26,66 +26,55 @@ class FetchProxyCN extends Command
      */
     public function handle()
     {
-        $limit = (int) $this->option('limit');
-        $this->info("🔍 Bắt đầu lấy tối đa {$limit} proxy có real curl speed < 100ms...");
+        $limit = 100; // Số lượng proxy cần lấy
+        $maxAttempts = 1000; // Số lần gọi tối đa
 
+        $this->info("🔍 Gọi {$maxAttempts} lần API để lấy {$limit} proxy mới nhất...");
         $proxies = [];
         $attempt = 0;
-        $maxAttempts = $limit * 20;
         $this->newLine();
+        $stt = 0;
 
-        while (count($proxies) < $limit && $attempt < $maxAttempts) {
+        while ($attempt < $maxAttempts) {
+            $stt += 1;
             $result = ProxyHelper::fetchAndCheckProxy();
 
             if ($result['status'] === 'success') {
                 $proxy = $result['proxy'];
+                $key = "{$proxy['ip']}:{$proxy['port']}";
 
-                $timeMs = ProxyHelper::testProxyCurlSpeed($proxy);
-                $timeText = $timeMs !== false ? "{$timeMs}ms" : "curl thất bại";
-
-                $this->line("Thử {$attempt}: {$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']} - Curl: {$timeText}");
-
-                if ($timeMs !== false && $timeMs < 100) {
-                    $exist = false;
-                    foreach ($proxies as $p) {
-                        if ($p['ip'] === $proxy['ip']) {
-                            $exist = true;
-                            break;
-                        }
-                    }
-
-                    if (!$exist) {
-                        $proxies[] = $proxy;
-                        $this->info("✅ Đã thêm proxy #".count($proxies).": {$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']} (Curl: {$timeMs}ms)");
-                    }
+                // Tránh trùng proxy dựa trên IP + port
+                if (!isset($proxies[$key])) {
+                    $proxies[$key] = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
+                    $this->line("✅ {$key} :" .$stt);
+                } else {
+                    $this->line("⚠️ Duplicate proxy: {$key}");
                 }
             } else {
-                $this->warn("Lần thử {$attempt}: {$result['message']}");
+                $this->warn("❌ Lần thử {$attempt}: {$result['message']}");
             }
 
             $attempt++;
-            usleep(500000); // 0.5s giữa các lần thử
-        }
-
-        if (count($proxies) === 0) {
-            $this->error("❌ Không tìm thấy proxy nào curl dưới 100ms.");
-            return 1;
+            usleep(100000); // Delay 0.1s
         }
 
         $this->newLine();
-        $this->info("🎉 Hoàn thành! Tìm thấy " . count($proxies) . " proxy curl dưới 100ms.");
 
-        foreach ($proxies as $index => $proxy) {
-            $this->line("Proxy #".($index+1).": {$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}");
+        // Lấy 100 proxy mới nhất
+        $lastProxies = array_slice(array_values($proxies), -$limit);
+
+        if (empty($lastProxies)) {
+            $this->error("❌ Không có proxy hợp lệ nào.");
+            return 1;
         }
 
-        file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, array_map(function ($proxy) {
-            return "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
-        }, $proxies)));
+        file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, $lastProxies));
 
-        $this->info("💾 Đã lưu vào: storage/app/proxies_fast.txt (dạng ip:port:user:pass)");
+        $this->info("🎉 Đã lấy được " . count($lastProxies) . " proxy mới nhất.");
+        $this->info("💾 Lưu tại: storage/app/proxies_fast.txt");
 
         return 0;
     }
+
 
 }

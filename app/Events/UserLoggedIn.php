@@ -2,10 +2,9 @@
 
 namespace App\Events;
 
+use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -13,26 +12,31 @@ use Illuminate\Queue\SerializesModels;
 class UserLoggedIn implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-  public $userId;
-    public $email;
-    /**
-     * Create a new event instance.
-     */
-     public function __construct($user)
+
+    public $user;
+
+    public function __construct(User $user)
     {
-        $this->userId = $user->id;
-        $this->email = $user->email;
+        $this->user = $user;
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
-     */
     public function broadcastOn(): array
     {
         return [
-            new Channel('user-login'),
+            new Channel('login-channel'),
+        ];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'user.loggedin';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'message' => "Tài khoản {$this->user->email} đã đăng nhập.",
+            'user_id' => $this->user->id,
         ];
     }
 }

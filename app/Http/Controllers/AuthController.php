@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Carbon\CarbonInterval;
+use App\Events\UserLoggedIn;
 use Illuminate\Http\Request;
 use App\Events\NewNotification;
 use App\Notifications\VerifyEmail;
@@ -104,6 +105,7 @@ class AuthController extends Controller implements HasMiddleware
             $user = auth('api')->user();
 
              // Phát sự kiện thông báo
+             event(new UserLoggedIn(auth()->user()));
             //  event(new NewNotification("Email $user->email đã đăng nhập thành công!",$user->id));
 
             return $this->respondWithToken(auth('api')->tokenById($user->id), $user);

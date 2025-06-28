@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LoginHistory;
 use App\Models\User;
 use Carbon\CarbonInterval;
 use App\Events\UserLoggedIn;
 use Illuminate\Http\Request;
 use App\Events\NewNotification;
 use App\Notifications\VerifyEmail;
+use Jenssegers\Agent\Agent;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -103,6 +105,9 @@ class AuthController extends Controller implements HasMiddleware
             }
 
             $user = auth('api')->user();
+
+            // Login History
+            $this->createUserHistory($request,$user);
 
              // Phát sự kiện thông báo
             broadcast(new UserLoggedIn($user))->toOthers();
@@ -207,5 +212,19 @@ class AuthController extends Controller implements HasMiddleware
             ], 400);
     }
 
+    public function createUserHistory($request,$user)
+    {
+        $agent = new Agent();
+        $agent->setUserAgent($request->userAgent());
 
+        LoginHistory::create([
+            'user_id'     => $user->id,
+            'ip_address'  => $request->ip(),
+            'user_agent'  => $request->userAgent(),
+            'device'      => $agent->device(),
+            'platform'    => $agent->platform().' '.$agent->version($agent->platform()),
+            'browser'     => $agent->browser().' '.$agent->version($agent->browser()),
+            'logged_in_at'=> now(),
+        ]);
+    }
 }

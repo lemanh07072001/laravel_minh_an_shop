@@ -110,7 +110,7 @@ class AuthController extends Controller implements HasMiddleware
             $this->createUserHistory($request,$user);
 
              // Phát sự kiện thông báo
-            broadcast(new UserLoggedIn($user))->toOthers();
+            event(new UserLoggedIn($user));
             //  event(new NewNotification("Email $user->email đã đăng nhập thành công!",$user->id));
 
             return $this->respondWithToken(auth('api')->tokenById($user->id), $user);

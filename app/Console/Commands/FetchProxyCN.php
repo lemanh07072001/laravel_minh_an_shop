@@ -27,31 +27,50 @@ class FetchProxyCN extends Command
     public function handle()
     {
         $limit = 100; // Số lượng proxy cần lấy
-        $maxAttempts = 1000; // Số lần gọi tối đa
+        $maxAttempts = 1800; // Số lần gọi tối đa
 
-        $this->info("🔍 Gọi {$maxAttempts} lần API để lấy {$limit} proxy mới nhất...");
+        $this->info("🔍 Gọi {$maxAttempts} lần API để lấy {$limit} proxy mới nhất, bỏ qua proxy đã tồn tại trong danh sách...");
+
         $proxies = [];
         $attempt = 0;
-        $this->newLine();
         $stt = 0;
 
+        // Load danh sách IP:Port cần bỏ qua
+        $skipKeys = [];
+        $skipFile = storage_path('app/banned_proxies.txt');
+        if (file_exists($skipFile)) {
+            $skipLines = file($skipFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($skipLines as $line) {
+                $parts = explode(':', $line);
+                if (count($parts) >= 2) {
+                    $skipKeys["{$parts[0]}:{$parts[1]}"] = true;
+                }
+            }
+        }
+
+        $this->newLine();
+
         while ($attempt < $maxAttempts) {
-            $stt += 1;
+            $stt++;
             $result = ProxyHelper::fetchAndCheckProxy();
 
             if ($result['status'] === 'success') {
                 $proxy = $result['proxy'];
                 $key = "{$proxy['ip']}:{$proxy['port']}";
 
-                // Tránh trùng proxy dựa trên IP + port
-                if (!isset($proxies[$key])) {
+                if (isset($skipKeys[$key])) {
+                    // Nếu trùng, bỏ qua, không cần báo
+                } elseif (!isset($proxies[$key])) {
+                    // Proxy mới
                     $proxies[$key] = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
-                    $this->line("✅ {$key} :" .$stt);
-                } else {
-                    $this->line("⚠️ Duplicate proxy: {$key}");
+                    $this->line("✅ Proxy mới: {$key} (STT {$stt})");
+
+                    if (count($proxies) >= $limit) {
+                        $this->info("🎯 Đã thu thập đủ {$limit} proxy mới.");
+                        break;
+                    }
                 }
-            } else {
-                $this->warn("❌ Lần thử {$attempt}: {$result['message']}");
+                // Nếu proxy trùng trong phiên này, cũng bỏ qua
             }
 
             $attempt++;
@@ -60,21 +79,23 @@ class FetchProxyCN extends Command
 
         $this->newLine();
 
-        // Lấy 100 proxy mới nhất
-        $lastProxies = array_slice(array_values($proxies), -$limit);
-
-        if (empty($lastProxies)) {
-            $this->error("❌ Không có proxy hợp lệ nào.");
+        if (empty($proxies)) {
+            $this->error("❌ Không có proxy mới nào.");
             return 1;
         }
 
-        file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, $lastProxies));
+        // Ghi file
+        $lines = array_values($proxies);
+        file_put_contents(storage_path('app/banned_proxies.txt'), implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
 
-        $this->info("🎉 Đã lấy được " . count($lastProxies) . " proxy mới nhất.");
-        $this->info("💾 Lưu tại: storage/app/proxies_fast.txt");
+        $this->info("🎉 Đã thêm " . count($proxies) . " proxy mới.");
+        $this->info("💾 Lưu tại: storage/app/banned_proxies.txt");
 
         return 0;
     }
+
+
+
 
 
 }

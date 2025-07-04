@@ -76,7 +76,16 @@ class FetchProxyCN extends Command
                     $check = $this->testProxy($proxy['ip'], $proxy['port'], $proxy['user'], $proxy['pass']);
 
                     if ($check['alive']) {
-                        $proxies[$key] = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
+                        $proxyLine = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
+                        $proxies[$key] = $proxyLine;
+
+                        // ✅ Lưu ngay vào checklist
+                        file_put_contents(
+                            storage_path('app/checklist_proxies.txt'),
+                            $proxyLine . PHP_EOL,
+                            FILE_APPEND
+                        );
+
                         $this->line("✅ Proxy OK: {$key} (STT {$stt})");
                     } else {
                         $this->warn("❌ Proxy không hoạt động: {$key}");

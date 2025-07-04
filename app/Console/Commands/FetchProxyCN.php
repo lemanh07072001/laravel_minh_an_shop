@@ -26,16 +26,16 @@ class FetchProxyCN extends Command
      */
     public function handle()
     {
-        $limit = 100; // Số lượng proxy cần lấy
-        $maxAttempts = 1800; // Số lần gọi tối đa
+        $limit = 500; // Số lượng proxy cần lấy
+        $maxAttempts = 5000; // Số lần gọi tối đa
 
-        $this->info("🔍 Gọi {$maxAttempts} lần API để lấy {$limit} proxy mới nhất, bỏ qua proxy đã tồn tại trong danh sách...");
+        $this->info("🔍 Bắt đầu lấy tối đa {$limit} proxy với latency <100ms...");
 
         $proxies = [];
         $attempt = 0;
         $stt = 0;
 
-        // Load danh sách IP:Port cần bỏ qua
+        // Load danh sách proxy cần bỏ qua
         $skipKeys = [];
         $skipFile = storage_path('app/banned_proxies.txt');
         if (file_exists($skipFile)) {
@@ -59,18 +59,27 @@ class FetchProxyCN extends Command
                 $key = "{$proxy['ip']}:{$proxy['port']}";
 
                 if (isset($skipKeys[$key])) {
-                    // Nếu trùng, bỏ qua, không cần báo
+                    $this->warn("⛔ Proxy nằm trong danh sách blacklist: {$key}");
                 } elseif (!isset($proxies[$key])) {
-                    // Proxy mới
-                    $proxies[$key] = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
-                    $this->line("✅ Proxy mới: {$key} (STT {$stt})");
+                    // Test xem proxy còn sống không
+                    $check = $this->testProxy($proxy['ip'], $proxy['port'], $proxy['user'], $proxy['pass']);
+
+                    if ($check['alive'] && $check['latency'] < 100) {
+                        $proxies[$key] = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
+                        $this->line("✅ Proxy OK: {$key} - {$check['latency']} ms (STT {$stt})");
+                    } else {
+                        $this->warn("❌ Proxy không đạt yêu cầu: {$key} - {$check['latency']} ms");
+                    }
 
                     if (count($proxies) >= $limit) {
-                        $this->info("🎯 Đã thu thập đủ {$limit} proxy mới.");
+                        $this->info("🎯 Đã thu thập đủ {$limit} proxy đạt yêu cầu.");
                         break;
                     }
+                } else {
+                    $this->line("⚠️ Proxy đã lấy trong phiên này: {$key}");
                 }
-                // Nếu proxy trùng trong phiên này, cũng bỏ qua
+            } else {
+                $this->warn("❌ Lần thử {$attempt}: {$result['message']}");
             }
 
             $attempt++;
@@ -80,20 +89,48 @@ class FetchProxyCN extends Command
         $this->newLine();
 
         if (empty($proxies)) {
-            $this->error("❌ Không có proxy mới nào.");
+            $this->error("❌ Không có proxy nào đạt yêu cầu.");
             return 1;
         }
 
         // Ghi file
         $lines = array_values($proxies);
-        file_put_contents(storage_path('app/banned_proxies.txt'), implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
+        file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
 
-        $this->info("🎉 Đã thêm " . count($proxies) . " proxy mới.");
-        $this->info("💾 Lưu tại: storage/app/banned_proxies.txt");
+        $this->info("🎉 Đã thêm " . count($proxies) . " proxy.");
+        $this->info("💾 Lưu tại: storage/app/proxies_fast.txt");
 
         return 0;
     }
 
+    private function testProxy($ip, $port, $user, $pass)
+    {
+        $url = "https://example.com"; // Trang nhẹ để test
+        $start = microtime(true);
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_PROXY => "{$ip}:{$port}",
+            CURLOPT_PROXYUSERPWD => "{$user}:{$pass}",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_NOBODY => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+        ]);
+
+        curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $latency = round((microtime(true) - $start) * 1000); // ms
+
+        return [
+            'alive' => $httpCode === 200,
+            'latency' => $latency,
+        ];
+    }
 
 
 

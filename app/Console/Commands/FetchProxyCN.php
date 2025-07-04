@@ -12,7 +12,7 @@ class FetchProxyCN extends Command
      *
      * @var string
      */
-    protected $signature =  'proxy:fetch-cn';
+    protected $signature = 'proxy:fetch-cn {--days=1}';
 
     /**
      * The console command description.
@@ -26,16 +26,19 @@ class FetchProxyCN extends Command
      */
     public function handle()
     {
-        $limit = 500; // Số lượng proxy cần lấy
-        $maxAttempts = 5000; // Số lần gọi tối đa
+        $daysToRun = (int) $this->option('days'); // Số ngày chạy
+        if ($daysToRun < 1) {
+            $this->error("❌ Bạn phải nhập số ngày >= 1.");
+            return 1;
+        }
 
-        $this->info("🔍 Bắt đầu lấy tối đa {$limit} proxy với latency <100ms...");
+        $this->info("🔍 Bắt đầu chạy liên tục trong {$daysToRun} ngày để thu thập proxy...");
+        $this->newLine();
 
         $proxies = [];
-        $attempt = 0;
         $stt = 0;
 
-        // Load danh sách proxy cần bỏ qua
+        // Load danh sách blacklist
         $skipKeys = [];
         $skipFile = storage_path('app/banned_proxies.txt');
         if (file_exists($skipFile)) {
@@ -48,9 +51,17 @@ class FetchProxyCN extends Command
             }
         }
 
-        $this->newLine();
+        // Thời gian bắt đầu
+        $startTime = time();
+        $endTime = $startTime + ($daysToRun * 86400); // 86400 giây = 1 ngày
 
-        while ($attempt < $maxAttempts) {
+        while (true) {
+            // Kiểm tra hết thời gian chưa
+            if (time() >= $endTime) {
+                $this->info("⏰ Đã hết thời gian chạy {$daysToRun} ngày.");
+                break;
+            }
+
             $stt++;
             $result = ProxyHelper::fetchAndCheckProxy();
 
@@ -59,53 +70,50 @@ class FetchProxyCN extends Command
                 $key = "{$proxy['ip']}:{$proxy['port']}";
 
                 if (isset($skipKeys[$key])) {
-                    $this->warn("⛔ Proxy nằm trong danh sách blacklist: {$key}");
+                    $this->warn("⛔ Proxy nằm trong blacklist: {$key}");
                 } elseif (!isset($proxies[$key])) {
-                    // Test xem proxy còn sống không
+                    // Test proxy
                     $check = $this->testProxy($proxy['ip'], $proxy['port'], $proxy['user'], $proxy['pass']);
 
-                    if ($check['alive'] && $check['latency'] < 100) {
+                    if ($check['alive']) {
                         $proxies[$key] = "{$proxy['ip']}:{$proxy['port']}:{$proxy['user']}:{$proxy['pass']}";
-                        $this->line("✅ Proxy OK: {$key} - {$check['latency']} ms (STT {$stt})");
+                        $this->line("✅ Proxy OK: {$key} (STT {$stt})");
                     } else {
-                        $this->warn("❌ Proxy không đạt yêu cầu: {$key} - {$check['latency']} ms");
+                        $this->warn("❌ Proxy không hoạt động: {$key}");
                     }
 
-                    if (count($proxies) >= $limit) {
-                        $this->info("🎯 Đã thu thập đủ {$limit} proxy đạt yêu cầu.");
-                        break;
+                    // Nếu đã đủ 100 proxy thì lưu ngay
+                    if (count($proxies) >= 100) {
+                        $lines = array_values($proxies);
+                        file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
+
+                        $this->info("💾 Đã lưu 100 proxy vào file. Tiếp tục thu thập...");
+                        $proxies = []; // Xóa proxy đã lưu để thu thập tiếp
                     }
                 } else {
-                    $this->line("⚠️ Proxy đã lấy trong phiên này: {$key}");
+                    $this->line("⚠️ Proxy đã thu thập trong phiên này: {$key}");
                 }
-            } else {
-                $this->warn("❌ Lần thử {$attempt}: {$result['message']}");
             }
 
-            $attempt++;
             usleep(100000); // Delay 0.1s
         }
 
-        $this->newLine();
+        // Nếu còn proxy chưa đủ 100, lưu nốt
+        if (!empty($proxies)) {
+            $lines = array_values($proxies);
+            file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
 
-        if (empty($proxies)) {
-            $this->error("❌ Không có proxy nào đạt yêu cầu.");
-            return 1;
+            $this->info("💾 Đã lưu " . count($proxies) . " proxy còn lại.");
         }
 
-        // Ghi file
-        $lines = array_values($proxies);
-        file_put_contents(storage_path('app/proxies_fast.txt'), implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
-
-        $this->info("🎉 Đã thêm " . count($proxies) . " proxy.");
-        $this->info("💾 Lưu tại: storage/app/proxies_fast.txt");
-
+        $this->info("🎉 Hoàn thành quá trình thu thập proxy.");
         return 0;
     }
 
+
     private function testProxy($ip, $port, $user, $pass)
     {
-        $url = "https://example.com"; // Trang nhẹ để test
+        $url = "https://example.com";
         $start = microtime(true);
 
         $ch = curl_init();
@@ -124,11 +132,8 @@ class FetchProxyCN extends Command
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $latency = round((microtime(true) - $start) * 1000); // ms
-
         return [
             'alive' => $httpCode === 200,
-            'latency' => $latency,
         ];
     }
 

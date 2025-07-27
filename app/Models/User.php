@@ -25,7 +25,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     const ROLE_KEY = [
         'Admin' => 0,
-        'User' => 0
+        'User' => 1
     ];
     /**
      * The attributes that are mass assignable.

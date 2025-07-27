@@ -11,7 +11,6 @@ use BenSampo\Enum\Enum;
  */
 final class StatusUserEnum extends Enum
 {
-    const All = 'all';
     const ACTIVE = 'active';
     const INACTIVE = 'inactive';
     const BANNED = 'banned';

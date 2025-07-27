@@ -18,7 +18,7 @@ class UserController extends Controller
         $search = $request->input('search');
         $status = $request->input('status');
         $role = $request->input('role');
-        $perPage = $request->input('per_page', 10);
+
 
 
         $users = User::query()->with('bans', 'profile');
@@ -43,35 +43,43 @@ class UserController extends Controller
 
 
         // Paginate
-        $data = $users->paginate($perPage);
+        $data = $users->get();
+
+
         return response()->json([
-            'data' => $data->items(),
-            'total' => $data->total(),
-            'per_page' => $data->perPage(),
-            'current_page' => $data->currentPage(),
+            'data' => $data,
+
         ]);
     }
 
     public function createUser(UserRequest $request)
     {
+
         try {
-            DB::transaction(function () use ($request) {
-                $password = $request->filled('password') ? $request->input('password') : '123456';
+            $password = $request->filled('password') ? $request->input('password') : '12345678';
 
-                $user = User::create([
-                    'name'     => $request['name'],
-                    'email'    => $request['email'],
-                    'password' => bcrypt($password),
-                    'status'   => $request['status'],
-                    'role'     => $request['role'],
-                ]);
+            $user = User::create([
+                'name'     => $request['name'],
+                'email'    => $request['email'],
+                'password' => bcrypt($password),
+                'status'   => $request['status'],
+                'role'     => 1,
+            ]);
 
-                $user->profile()->create([
-                    'phone'   => $request['phone'],
-                    'address' => $request['address'] ?? '', // tránh lỗi nếu null
-                    'note'    => $request['note'] ?? '',    // tránh lỗi nếu null
-                ]);
-            });
+            $user->profile()->create([
+                'phone'   => $request['phone'],
+                'address' => $request['address'] ?? '', // tránh lỗi nếu null
+                'note'    => $request['note'] ?? '',    // tránh lỗi nếu null
+            ]);
+
+            if( $request->input('email_template')){
+                $message = str_replace('{nameShop}', config('app.name'), $request->input('email_template')['subject']);
+                $body = $request->input('email_template')['body'];
+                $template = $request->input('email_template')['viewTemplate'];
+
+                Mail::to($user->email)->send(new SendEmail($message, $body,$template));
+
+            }
 
             return response()->json(['message' => 'Tạo người dùng mới thành công!'], 200);
         } catch (\Exception $e) {
@@ -85,7 +93,7 @@ class UserController extends Controller
 
     public function editUser(UserRequest $request,$id)
     {
-        logger($request->all());
+
         try {
             DB::transaction(function () use ($request,$id) {
                 $user = User::find($id);
@@ -106,7 +114,6 @@ class UserController extends Controller
                     'email'    => $request['email'],
                     'password' => $password,
                     'status'   => $request['status'],
-                    'role'     => $request['role'],
                 ]);
 
                 // updateOrCreate để tránh lỗi nếu đã có profile

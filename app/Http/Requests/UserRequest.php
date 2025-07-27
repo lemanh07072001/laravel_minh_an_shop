@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\StatusUserEnum;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UserRequest extends FormRequest
 {
@@ -25,11 +28,11 @@ class UserRequest extends FormRequest
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email,' . $this->route('id'),
             'password' => 'nullable|string|min:6',
-            'phone'    => 'required|string',
+            'phone'    => 'nullable|string',
             'address'  => 'nullable|string',
             'note'     => 'nullable|string',
-            'status'   => 'required|integer',
-            'role'     => 'required|integer',
+            'status'   => ['required', 'string', Rule::in(User::STAUS_KEY)],
+
         ];
     }
 
@@ -41,9 +44,8 @@ class UserRequest extends FormRequest
             'email.email'       => 'Email không đúng định dạng.',
             'email.unique'      => 'Email đã tồn tại.',
             'password.min'      => 'Mật khẩu phải có ít nhất 6 ký tự.',
-            'phone.required'    => 'Số điện thoại không được để trống.',
             'status.required'   => 'Trạng thái là bắt buộc.',
-            'role.required'     => 'Quyền là bắt buộc.',
+
         ];
     }
 }
